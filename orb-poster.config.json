@@ -1,0 +1,22 @@
+{
+  "dryRun": true,
+  "pollingIntervalMs": 15000,
+  "stateFilePath": "data/orb-poster-state.json",
+  "oracles": [
+    {
+      "address": "0x1234567890abcdef1234567890abcdef12345678",
+      "chainId": 534351,
+      "rpcUrl": "https://sepolia-rpc.scroll.io",
+      "pricePair": "ETH/USD",
+      "policy": {
+        "heartbeatIntervalMs": 3600000,
+        "deviationThresholdBps": 50,
+        "staleAfterMs": 120000,
+        "gasCeilingGwei": 60,
+        "maxRetries": 3,
+        "backoffMultiplier": 2
+      }
+    }
+  ],
+  "priceSources": ["coingecko", "coinmarketcap"]
+}

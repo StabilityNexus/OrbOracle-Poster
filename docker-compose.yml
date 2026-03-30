@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  poster:
+    build: .
+    restart: always
+    env_file:
+      - .env.local
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    volumes:
+      - ./orb-poster.config.json:/app/orb-poster.config.json:ro
+      - ./data:/app/data
