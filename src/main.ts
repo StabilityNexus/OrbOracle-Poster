@@ -16,6 +16,7 @@ import { FileStateStore } from './store/state';
 import dotenv from 'dotenv';
 import { CoinbaseAdapter } from './adapters/coinbase';
 import { KrakenAdapter } from './adapters/kraken';
+import { OneInchAdapter } from './adapters/oneinch';
 
 dotenv.config({ path: process.env.ENV_PATH || '.env.local' });
 
@@ -27,6 +28,7 @@ function instantiateAdapters(names: string[]): PriceAdapter[] {
     else if (name === 'binance') adapters.push(new BinanceAdapter());
     else if (name === 'coinbase') adapters.push(new CoinbaseAdapter());
     else if (name === 'kraken') adapters.push(new KrakenAdapter());
+    else if (name === 'oneinch') adapters.push(new OneInchAdapter());
     else logger.warn({ event: 'UNKNOWN_ADAPTER', name });
   }
   return adapters;
