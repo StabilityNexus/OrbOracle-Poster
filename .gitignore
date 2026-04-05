@@ -329,6 +329,7 @@ TSWLatexianTemp*
 node_modules/
 dist/
 .env.local
+data/orb-poster-state.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
