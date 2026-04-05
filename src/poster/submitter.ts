@@ -1,4 +1,5 @@
 import { createWalletClient, createPublicClient, http, parseAbi, getAddress, formatGwei } from 'viem';
+import type { Hash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { mainnet, scrollSepolia, baseSepolia, arbitrumSepolia } from 'viem/chains';
 import { logger } from '../utils/logger';
@@ -86,7 +87,7 @@ export class Submitter {
     await this.nonceManager.syncWithNetwork();
   }
 
-  async submitPrice(price: bigint, trigger: string): Promise<string> {
+  async submitPrice(price: bigint, trigger: string): Promise<Hash> {
     return this.circuitBreaker.execute(async () =>
       withRetry(async () => this.doSubmitPrice(price, trigger), {
         maxAttempts: 3,
@@ -96,10 +97,10 @@ export class Submitter {
     );
   }
 
-  private async doSubmitPrice(price: bigint, trigger: string): Promise<string> {
+  private async doSubmitPrice(price: bigint, trigger: string): Promise<Hash> {
     const token = this.target.pricePair.split('/')[0]?.trim().toUpperCase() || this.target.pricePair;
     let nonce: number | null = null;
-    let hash: string | null = null;
+    let hash: Hash | null = null;
     try {
       const address = getAddress(this.target.address);
       let fees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint };
