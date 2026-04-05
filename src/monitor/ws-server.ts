@@ -67,3 +67,7 @@ export class WsMonitor {
 }
 
 export const monitor = process.env.NODE_ENV !== 'test' ? new WsMonitor() : null;
+
+export function getMonitor() {
+  return monitor;
+}

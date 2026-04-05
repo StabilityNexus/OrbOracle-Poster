@@ -325,9 +325,12 @@ TSWLatexianTemp*
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
 
-./node_modules
-node_modules
-dist
-data
+## Node / TypeScript
+node_modules/
+dist/
 .env.local
-.orb-poster-state.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
