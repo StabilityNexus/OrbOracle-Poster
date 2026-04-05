@@ -2,17 +2,42 @@ import axios from 'axios';
 import { PriceAdapter, PriceResult } from './types';
 import { logger } from '../utils/logger';
 import { normalizePriceTo18 } from './source/http';
+import { withRetry } from '../utils/retry';
+import { CircuitBreaker } from '../utils/circuit-breaker';
+import { getMonitor } from '../monitor/ws-server';
 
 export class BinanceAdapter implements PriceAdapter {
   name = 'binance';
   
+  private readonly circuitBreaker = new CircuitBreaker(
+    { failureThreshold: 5, failureWindowMs: 60000, resetTimeoutMs: 30000, openResetTimeoutMs: 60000 },
+    'binance'
+  );
+  
   // Binance symbol mapping format ETHUSDT
   private pairToSymbol: Record<string, string> = {
-    'ETH/USD': 'ETHUSDT',
-    'BTC/USD': 'BTCUSDT',
+    'ETH/USDT': 'ETHUSDT',
+    'BTC/USDT': 'BTCUSDT',
   };
 
+  getCircuitBreakerState() {
+    return this.circuitBreaker.getState();
+  }
+
   async fetchPrice(pair: string): Promise<PriceResult> {
+    return this.circuitBreaker.execute(async () =>
+      withRetry(async () => this.doFetchPrice(pair), {
+        maxAttempts: 3,
+        operationName: `binance.fetchPrice.${pair}`,
+        isRetryable: (err) => {
+          const msg = String(err).toLowerCase();
+          return msg.includes('timeout') || msg.includes('429') || msg.includes('5') || msg.includes('network') || msg.includes('econn');
+        },
+      })
+    );
+  }
+
+  private async doFetchPrice(pair: string): Promise<PriceResult> {
     const symbol = this.pairToSymbol[pair];
     if (!symbol) {
         throw new Error(`BinanceAdapter: Unsupported pair ${pair}`);
@@ -34,6 +59,7 @@ export class BinanceAdapter implements PriceAdapter {
       };
     } catch (error: any) {
       logger.error({ event: 'PRICE_FETCH_ERROR', adapter: this.name, pair, error: error.message });
+      getMonitor()?.emitApiError({ source: this.name, error: error.message });
       throw error;
     }
   }

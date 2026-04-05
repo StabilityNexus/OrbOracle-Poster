@@ -28,6 +28,42 @@ export class WsMonitor {
       }
     }
   }
+
+  private emit(event: string, data: unknown) {
+    this.broadcast({
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  emitPriceUpdate(data: { token: string; price: string; sources: Array<{ name: string; price: string; age: number }> }) {
+    this.emit('price:update', data);
+  }
+
+  emitSubmissionPending(data: { token: string; nonce: number; txHash?: string }) {
+    this.emit('submission:pending', data);
+  }
+
+  emitSubmissionConfirmed(data: { token: string; nonce: number; txHash: string }) {
+    this.emit('submission:confirmed', data);
+  }
+
+  emitSubmissionFailed(data: { token: string; nonce: number; error: string }) {
+    this.emit('submission:failed', data);
+  }
+
+  emitApiError(data: { source: string; error: string }) {
+    this.emit('error:api', data);
+  }
+
+  emitChainError(data: { error: string }) {
+    this.emit('error:chain', data);
+  }
+
+  emitGasError(data: { error: string }) {
+    this.emit('error:gas', data);
+  }
 }
 
 export const monitor = process.env.NODE_ENV !== 'test' ? new WsMonitor() : null;

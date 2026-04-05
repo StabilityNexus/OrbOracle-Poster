@@ -60,6 +60,8 @@ function deserializeState(state: SerializedOracleRuntimeState): OracleRuntimeSta
 export class FileStateStore {
   private readonly filePath: string;
   private cache: Record<string, OracleRuntimeState> = {};
+  private persistTimer: NodeJS.Timeout | null = null;
+  private pendingPersist: Promise<void> | null = null;
 
   constructor(filePath: string) {
     this.filePath = path.resolve(process.cwd(), filePath);
@@ -74,9 +76,13 @@ export class FileStateStore {
     return this.cache[key];
   }
 
+  entries(): Array<[string, OracleRuntimeState]> {
+    return Object.entries(this.cache);
+  }
+
   set(key: string, value: OracleRuntimeState): void {
     this.cache[key] = value;
-    this.persist();
+    this.schedulePersist();
   }
 
   update(key: string, patch: Partial<OracleRuntimeState>): OracleRuntimeState {
@@ -92,19 +98,53 @@ export class FileStateStore {
       this.cache = {};
       return;
     }
-
-    const raw = fs.readFileSync(this.filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as SerializedState;
-    const entries = Object.entries(parsed).map(([key, value]) => [key, deserializeState(value)] as const);
-    this.cache = Object.fromEntries(entries);
+    try {
+      const raw = fs.readFileSync(this.filePath, 'utf-8');
+      const parsed = JSON.parse(raw) as SerializedState;
+      const entries = Object.entries(parsed).map(([key, value]) => [key, deserializeState(value)] as const);
+      this.cache = Object.fromEntries(entries);
+    } catch (error: any) {
+      this.cache = {};
+      this.ensureDir();
+      const backupPath = `${this.filePath}.corrupt`;
+      try {
+        fs.copyFileSync(this.filePath, backupPath);
+      } catch {
+        // ignore backup failures
+      }
+      // eslint-disable-next-line no-console
+      console.warn(`State file corrupted. Resetting state. Path: ${this.filePath}. Error: ${error.message}`);
+    }
   }
 
-  private persist(): void {
+  private schedulePersist(): void {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+    }
+    this.persistTimer = setTimeout(() => {
+      this.pendingPersist = this.persistAsync();
+    }, 200);
+  }
+
+  private async persistAsync(): Promise<void> {
     this.ensureDir();
     const serialized = Object.fromEntries(
       Object.entries(this.cache).map(([key, value]) => [key, serializeState(value)]),
     );
-    fs.writeFileSync(this.filePath, JSON.stringify(serialized, null, 2), 'utf-8');
+    await fs.promises.writeFile(this.filePath, JSON.stringify(serialized, null, 2), 'utf-8');
+  }
+
+  async flushPersist(): Promise<void> {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    if (this.pendingPersist) {
+      await this.pendingPersist;
+      this.pendingPersist = null;
+    } else {
+      await this.persistAsync();
+    }
   }
 
   private ensureDir(): void {

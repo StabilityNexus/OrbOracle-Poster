@@ -97,6 +97,18 @@ describe('PolicyEngine', () => {
     expect(result.reason).toBe('gas_above_ceiling');
   });
 
+  it('submits heartbeat even when gas exceeds ceiling', () => {
+    const engine = new PolicyEngine({ ...basePolicy, gasCeilingGwei: 25 });
+    const result = engine.evaluate(
+      100n,
+      { lastSubmittedPrice: 100n, lastSubmitTime: nowMs - 60001 },
+      { nowMs, sourceTimestampMs: nowMs, dryRun: false, gasPriceGwei: 40 },
+    );
+
+    expect(result.shouldSubmit).toBe(true);
+    expect(result.reason).toBe('heartbeat_expired');
+  });
+
   it('returns dry-run skip reason even when trigger would submit', () => {
     const engine = new PolicyEngine(basePolicy);
     const result = engine.evaluate(

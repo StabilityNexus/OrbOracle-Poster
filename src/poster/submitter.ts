@@ -5,6 +5,9 @@ import { logger } from '../utils/logger';
 import { GasEstimator } from './gas-estimator';
 import { NonceManager } from './nonce-manager';
 import { OracleTarget } from '../config/schema';
+import { withRetry } from '../utils/retry';
+import { CircuitBreaker, CircuitState } from '../utils/circuit-breaker';
+import { getMonitor } from '../monitor/ws-server';
 
 // Minimal ABI for OrbOracle interactions
 const orbOracleAbi = parseAbi([
@@ -18,8 +21,15 @@ export class Submitter {
   private gasEstimator: GasEstimator;
   private nonceManager: NonceManager;
   private account;
+  private readonly circuitBreaker: CircuitBreaker;
 
-  constructor(private target: OracleTarget, privateKey: string) {
+  constructor(
+    private target: OracleTarget,
+    privateKey: string,
+    opts: {
+      gasHistoryWindowSize?: number;
+    } = {},
+  ) {
     const pk = privateKey as `0x${string}`;
     this.account = privateKeyToAccount(pk);
     
@@ -30,7 +40,10 @@ export class Submitter {
       84532: baseSepolia,
       421614: arbitrumSepolia
     };
-    const chain = chains[target.chainId] || mainnet; // Default to mainnet/custom
+    const chain = chains[target.chainId];
+    if (!chain) {
+      throw new Error(`Unsupported chainId ${target.chainId} in poster config`);
+    }
 
     this.publicClient = createPublicClient({
       chain,
@@ -43,8 +56,13 @@ export class Submitter {
       transport: http(target.rpcUrl),
     });
 
-    this.gasEstimator = new GasEstimator(this.publicClient);
-    this.nonceManager = new NonceManager(this.publicClient);
+    this.gasEstimator = new GasEstimator(this.publicClient, { historyWindowSize: opts.gasHistoryWindowSize });
+    this.nonceManager = new NonceManager(this.publicClient, this.account.address);
+    
+    this.circuitBreaker = new CircuitBreaker(
+      { failureThreshold: 5, failureWindowMs: 60000, resetTimeoutMs: 30000, openResetTimeoutMs: 60000 },
+      `submitter.${target.chainId}`
+    );
   }
 
   async getCurrentGasGwei(): Promise<number | undefined> {
@@ -56,11 +74,44 @@ export class Submitter {
     }
   }
 
+  async estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }> {
+    return this.gasEstimator.estimateGasFees();
+  }
+
+  getPendingTxCount(): number {
+    return this.nonceManager.getPendingCount();
+  }
+
+  async syncNonceWithNetwork(): Promise<void> {
+    await this.nonceManager.syncWithNetwork();
+  }
+
   async submitPrice(price: bigint, trigger: string): Promise<string> {
+    return this.circuitBreaker.execute(async () =>
+      withRetry(async () => this.doSubmitPrice(price, trigger), {
+        maxAttempts: 3,
+        operationName: `submitPrice.${this.target.chainId}`,
+        isRetryable: Submitter.isRetryableError,
+      })
+    );
+  }
+
+  private async doSubmitPrice(price: bigint, trigger: string): Promise<string> {
+    const token = this.target.pricePair.split('/')[0]?.trim().toUpperCase() || this.target.pricePair;
+    let nonce: number | null = null;
+    let hash: string | null = null;
     try {
       const address = getAddress(this.target.address);
-      const { maxFeePerGas, maxPriorityFeePerGas } = await this.gasEstimator.estimateGasFees();
-      const nonce = await this.nonceManager.getNextNonce(this.account.address);
+      let fees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint };
+      try {
+        fees = await this.gasEstimator.estimateGasFees();
+      } catch (error: any) {
+        getMonitor()?.emitGasError({ error: error.message });
+        throw error;
+      }
+      const { maxFeePerGas, maxPriorityFeePerGas } = fees;
+
+      nonce = await this.nonceManager.getNextNonce();
 
       logger.info({ 
         event: 'SUBMITTING_TX', 
@@ -80,7 +131,10 @@ export class Submitter {
         nonce,
       });
 
-      const hash = await this.walletClient.writeContract(request.request);
+      hash = await this.walletClient.writeContract(request.request);
+
+      this.nonceManager.submitTransaction(nonce, hash);
+      getMonitor()?.emitSubmissionPending({ token, nonce, txHash: hash });
       
       logger.info({ 
         event: 'TX_SUBMITTED', 
@@ -93,8 +147,14 @@ export class Submitter {
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
 
       if (receipt.status !== 'success') {
+        this.nonceManager.markFailed(nonce);
+        getMonitor()?.emitSubmissionFailed({ token, nonce, error: `Transaction reverted: ${hash}` });
         throw new Error(`Transaction reverted: ${hash}`);
       }
+
+      this.nonceManager.markConfirmed(nonce);
+      this.gasEstimator.recordPriorityFee(maxPriorityFeePerGas);
+      getMonitor()?.emitSubmissionConfirmed({ token, nonce, txHash: hash });
 
       logger.info({ 
         event: 'SUBMISSION_SUCCESS',
@@ -109,10 +169,17 @@ export class Submitter {
 
       return hash;
     } catch (error: any) {
-      this.nonceManager.resetNonce(this.account.address); // Reset on failure
+      const msg = error?.message || String(error);
+      // If the tx was never submitted (no hash), release nonce for retry.
+      if (nonce !== null && !hash) {
+        this.nonceManager.markFailed(nonce);
+        getMonitor()?.emitSubmissionFailed({ token, nonce, error: msg });
+      }
+
+      getMonitor()?.emitChainError({ error: msg });
       logger.error({ 
         event: 'TX_SUBMIT_ERROR', 
-        error: error.message, 
+        error: msg, 
         target: this.target.address,
         retryable: Submitter.isRetryableError(error),
       });
@@ -141,7 +208,27 @@ export class Submitter {
   }
 
   static isRetryableError(error: unknown): boolean {
-    const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
-    return msg.includes('timeout') || msg.includes('429') || msg.includes('nonce too low') || msg.includes('replacement transaction underpriced');
+    const err = error as Error & { code?: string };
+    const msg = (err instanceof Error ? err.message : String(error)).toLowerCase();
+    const code = (err?.code || '').toUpperCase();
+    return (
+      msg.includes('timeout') ||
+      msg.includes('429') ||
+      msg.includes('502') ||
+      msg.includes('503') ||
+      msg.includes('504') ||
+      msg.includes('network error') ||
+      msg.includes('connection reset') ||
+      msg.includes('econnreset') ||
+      msg.includes('econnrefused') ||
+      msg.includes('socket hang up') ||
+      msg.includes('dns') ||
+      msg.includes('getaddrinfo') ||
+      msg.includes('temporarily unavailable') ||
+      msg.includes('nonce too low') ||
+      msg.includes('replacement transaction underpriced') ||
+      code === 'ECONNRESET' ||
+      code === 'ECONNREFUSED'
+    );
   }
 }

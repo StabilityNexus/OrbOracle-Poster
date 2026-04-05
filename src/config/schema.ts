@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+export const AlertConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  webhookUrls: z.array(z.string().url()).default([]),
+  minSeverity: z.enum(['info', 'warning', 'error']).default('warning'),
+});
+
 export const PostingPolicySchema = z.object({
   heartbeatIntervalMs: z.number().int().positive(),
   deviationThresholdBps: z.number().int().positive(),
@@ -25,8 +31,11 @@ export const PosterConfigSchema = z.object({
   pollingIntervalMs: z.number().int().positive().default(10000),
   dryRun: z.boolean().default(false),
   stateFilePath: z.string().min(1).default('.orb-poster-state.json'),
+  gasHistoryWindowSize: z.number().int().positive().default(20),
+  alertConfig: AlertConfigSchema.optional(),
 });
 
+export type AlertConfig = z.infer<typeof AlertConfigSchema>;
 export type PostingPolicy = z.infer<typeof PostingPolicySchema>;
 export type OracleTarget = z.infer<typeof OracleTargetSchema>;
 export type PosterConfig = z.infer<typeof PosterConfigSchema>;
