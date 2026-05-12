@@ -1,0 +1,37 @@
+{
+  "name": "orboracle-poster",
+  "version": "1.0.0",
+  "description": "<!-- Don't delete it --> <div name=\"readme-top\"></div>",
+  "main": "index.js",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "build": "tsc --module NodeNext --moduleResolution NodeNext",
+    "start": "node --experimental-modules dist/index.js",
+    "dev": "ts-node --esm src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DeveloperAmrit/OrbOracle-Poster.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/DeveloperAmrit/OrbOracle-Poster/issues"
+  },
+  "homepage": "https://github.com/DeveloperAmrit/OrbOracle-Poster#readme",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "dotenv": "^17.3.1",
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2"
+  }
+}
