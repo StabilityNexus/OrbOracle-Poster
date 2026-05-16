@@ -48,69 +48,24 @@
 ---
 
 <div align="center">
-<h1>TODO: Project Name</h1>
+<h1>OrbOracle Poster</h1>
 </div>
 
-[TODO](https://TODO.stability.nexus/) is a ... TODO: Project Description.
+[OrbOracle Poster](https://github.com/StabilityNexus/OrbOracle-Poster) automates the value submission to an oracle launched in OrbOracle. It fetches values from networks like ChainLink, Pyth, or general REST APIs, and submits them to an OrbOracle contract on behalf of the user.
 
----
-
-## Project Maturity
-
-TODO: In the checklist below, mark the items that have been completed and delete items that are not applicable to the current project:
-
-* [ ] The project has a logo.
-* [ ] The project has a favicon.
-* [ ] The protocol:
-   - [ ] has been described and formally specified in a paper.
-   - [ ] has had its main properties mathematically proven.
-   - [ ] has been formally verified.
-* [ ] The smart contracts:
-   - [ ] were thoroughly reviewed by at least two knights of The Stable Order.
-   - [ ] were deployed to:
-      - [ ] Ergo
-      - [ ] Cardano
-      - [ ] EVM Chains:
-        - [ ] Ethereum Classic
-        - [ ] Ethereum
-        - [ ] Polygon
-        - [ ] BSC
-        - [ ] Base
-* [ ] The mobile app:
-   - [ ] has an _About_ page containing the Stability Nexus's logo and pointing to the social media accounts of the Stability Nexus.
-   - [ ] is available for download as a release in this repo.
-   - [ ] is available in the relevant app stores.
-* [ ] The web frontend:
-   - [ ] has proper title and metadata.
-   - [ ] has proper open graph metadata, to ensure that it is shown well when shared in social media (Discord, Telegram, Twitter, LinkedIn).
-   - [ ] has a footer, containing the Stability Nexus's logo and pointing to the social media accounts of the Stability Nexus.
-   - [ ] is fully static and client-side.
-   - [ ] is deployed to Github Pages via a Github Workflow.
-   - [ ] is accessible through the https://TODO:PROJECT-NAME.stability.nexus domain.
-* [ ] the project is listed in [https://stability.nexus/protocols](https://stability.nexus/protocols).
-
----
 
 ## Tech Stack
 
-TODO:
+### Backend & Core
 
-### Frontend
+- Node.js (TypeScript)
+- Ethers.js (Blockchain interaction)
+- Axios (HTTP requests)
+- Jest (Testing)
 
-TODO:
+### Infrastructure
 
-- Next.js 14+ (React)
-- TypeScript
-- TailwindCSS
-- shadcn/ui
-
-### Blockchain
-
-TODO:
-
-- Wagmi
-- Solidity Smart Contracts
-- Ethers.js
+- Docker & Docker Compose
 
 ---
 
@@ -118,50 +73,53 @@ TODO:
 
 ### Prerequisites
 
-TODO
 
 - Node.js 18+
 - npm/yarn/pnpm
 - MetaMask or any other web3 wallet browser extension
+- An oracle on OrbOracle
 
 ### Installation
 
-TODO
-
-#### 1. Clone the Repository
+#### 1. Fork and Clone the Repository
 
 ```bash
-git clone https://github.com/StabilityNexus/TODO.git
-cd TODO
+git clone https://github.com/DeveloperAmrit/OrbOracle-Poster.git
+cd OrbOracle-Poster
 ```
 
 #### 2. Install Dependencies
 
-Using your preferred package manager:
-
 ```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
 ```
 
-#### 3. Run the Development Server
+#### 3. Environment Configuration
 
-Start the app locally:
+Copy the example environment file:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+cp .env.example .env
 ```
 
-#### 4. Open your Browser
+Open `.env` and configure the following variables:
+- `RPC_URL`: The JSON-RPC endpoint for your node provider (e.g., Alchemy, Infura, or a local node).
+- `PRIVATE_KEY`: The private key of the wallet submitting the transactions.
+- `ORACLE_ADDRESS`: The deployed OrbOracle contract address.
+- `FEED_URL`: The REST API URL for fetching prices (e.g., CoinGecko, Binance, Pyth off-chain API).
+- `CHAINLINK_FEED_ADDRESS` *(Optional)*: Chainlink Aggregator Contract Address to fetch values from Chainlink.
+- `CHAINLINK_RPC_URL` *(Optional)*: RPC URL used specifically for the Chainlink feed. Defaults to `RPC_URL` if omitted.
+- `PYTH_PRICE_ID`: The Pyth Price Feed ID (Defaults to ADA/USD).
+- `UPDATE_INTERVAL_MS`: Frequency of submissions in milliseconds.
+- `MIN_STAKE_REQUIRED`: Minimum token amount required to submit.
 
-Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
+#### 4. Launch the App
+
+Start the poster using:
+
+```bash
+npm start
+```
 
 ---
 
