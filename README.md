@@ -51,7 +51,7 @@
 <h1>OrbOracle Poster</h1>
 </div>
 
-[OrbOracle Poster](https://github.com/DeveloperAmrit/OrbOracle-Poster) automates the value submission to an oracle launched in OrbOracle. It fetches values from networks like ChainLink, Pyth, or general REST APIs, and submits them to an OrbOracle contract on behalf of the user.
+[OrbOracle Poster](https://github.com/StabilityNexus/OrbOracle-Poster) automates the value submission to an oracle launched in OrbOracle. It fetches values from networks like ChainLink, Pyth, or general REST APIs, and submits them to an OrbOracle contract on behalf of the user.
 
 
 ## Tech Stack
