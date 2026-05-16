@@ -48,10 +48,10 @@
 ---
 
 <div align="center">
-<h1>TODO: Project Name</h1>
+<h1>OrbOracle Poster</h1>
 </div>
 
-[TODO](https://TODO.stability.nexus/) is a ... TODO: Project Description.
+[OrbOracle Poster](https://github.com/DeveloperAmrit/OrbOracle-Poster) is a TypeScript-based Node.js application that interacts with smart contracts using Ethers.js, potentially acting as an Oracle price poster or data aggregator.
 
 ---
 
@@ -93,24 +93,16 @@ TODO: In the checklist below, mark the items that have been completed and delete
 
 ## Tech Stack
 
-TODO:
+### Backend & Core
 
-### Frontend
+- Node.js (TypeScript)
+- Ethers.js (Blockchain interaction)
+- Axios (HTTP requests)
+- Jest (Testing)
 
-TODO:
+### Infrastructure
 
-- Next.js 14+ (React)
-- TypeScript
-- TailwindCSS
-- shadcn/ui
-
-### Blockchain
-
-TODO:
-
-- Wagmi
-- Solidity Smart Contracts
-- Ethers.js
+- Docker & Docker Compose
 
 ---
 
@@ -131,8 +123,8 @@ TODO
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/StabilityNexus/TODO.git
-cd TODO
+git clone https://github.com/DeveloperAmrit/OrbOracle-Poster.git
+cd OrbOracle-Poster
 ```
 
 #### 2. Install Dependencies
@@ -141,10 +133,6 @@ Using your preferred package manager:
 
 ```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
 ```
 
 #### 3. Run the Development Server
@@ -153,15 +141,13 @@ Start the app locally:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-#### 4. Open your Browser
+#### 4. Run the Tests
 
-Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
+```bash
+npm run test
+```
 
 ---
 
